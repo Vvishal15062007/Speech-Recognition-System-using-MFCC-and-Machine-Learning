@@ -1,0 +1,104 @@
+"""
+Speech Recognition using MFCC + Machine Learning (SVM)
+Author: Your Name
+"""
+
+# Install libraries (only needed in Colab)
+# !pip install librosa soundfile scikit-learn matplotlib
+
+import numpy as np
+import librosa
+import librosa.display
+import os
+import matplotlib.pyplot as plt
+
+from sklearn.model_selection import train_test_split
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
+
+# ================================
+# Dataset Path
+# ================================
+dataset_path = "speech_dataset"   # change path if needed
+
+# ================================
+# Waveform Function
+# ================================
+def plot_waveform(file_path):
+    audio, sr = librosa.load(file_path, sr=16000)
+
+    plt.figure(figsize=(10,4))
+    librosa.display.waveshow(audio, sr=sr)
+
+    plt.title("Speech Waveform")
+    plt.xlabel("Time")
+    plt.ylabel("Amplitude")
+    plt.show()
+
+# ================================
+# MFCC Feature Extraction
+# ================================
+def extract_mfcc(file_path):
+    audio, sr = librosa.load(file_path, sr=16000)
+    mfcc = librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=13)
+    mfcc_scaled = np.mean(mfcc.T, axis=0)
+    return mfcc_scaled
+
+# ================================
+# Load Dataset
+# ================================
+data = []
+labels = []
+
+for label in os.listdir(dataset_path):
+    folder = os.path.join(dataset_path, label)
+
+    if os.path.isdir(folder):
+        for file in os.listdir(folder):
+
+            if file.endswith(".wav"):
+                file_path = os.path.join(folder, file)
+
+                mfcc = extract_mfcc(file_path)
+
+                data.append(mfcc)
+                labels.append(label)
+
+X = np.array(data)
+y = np.array(labels)
+
+print("Dataset Loaded")
+print("Total samples:", len(X))
+
+# ================================
+# Train Model
+# ================================
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42)
+
+model = SVC(kernel='linear')
+model.fit(X_train, y_train)
+
+print("Model trained")
+
+# ================================
+# Accuracy
+# ================================
+y_pred = model.predict(X_test)
+accuracy = accuracy_score(y_test, y_pred)
+
+print("Model Accuracy:", accuracy)
+
+# ================================
+# Test Audio
+# ================================
+test_file = input("Enter test audio path: ")
+
+plot_waveform(test_file)
+
+mfcc = extract_mfcc(test_file)
+mfcc = mfcc.reshape(1, -1)
+
+prediction = model.predict(mfcc)
+
+print("\nRecognized word:", prediction[0])
